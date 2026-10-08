@@ -65,7 +65,8 @@ cd ai-engineering-5/agente-react
 
 python3.12 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
+pip install -r requirements.txt    # versiones exactas probadas
+# alternativa con rangos de versión: pip install -e ".[dev]"
 
 cp .env.example .env               # y completá ANTHROPIC_API_KEY u OPENAI_API_KEY
 ```

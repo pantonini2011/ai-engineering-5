@@ -1,0 +1,17 @@
+# Versiones con las que se probó el agente (tests + traza en traces/).
+# Instalación: pip install -r requirements.txt
+langgraph==1.2.12
+langgraph-checkpoint-sqlite==3.1.1
+langchain-core==1.6.7
+langchain-anthropic==1.7.5
+langchain-openai==1.6.6
+aiosqlite==0.22.1
+pydantic==2.11.5
+python-dotenv==1.2.3
+
+# Desarrollo: tests y chequeo de tipos
+pytest==9.1.1
+mypy==2.4.0
+
+# Instala el propio paquete (src/agente) para poder correr `python -m agente.main`
+-e .
