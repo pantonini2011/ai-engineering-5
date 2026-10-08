@@ -16,6 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import anthropic
+import openai
 from dotenv import load_dotenv
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
@@ -23,7 +25,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.errors import GraphRecursionError
 
-from agente.graph import build_graph, cerrar_turno_cortado
+from agente.graph import build_graph, cerrar_turno_cortado, proveedor_llm, verificar_configuracion
 
 RECURSION_LIMIT = 10  # techo de pasos por invocación (evita bucles y costos)
 DB_PATH = "checkpoints.db"
@@ -99,6 +101,10 @@ DEMO: list[tuple[str, str]] = [
 async def demo(llm: BaseChatModel | None = None, db_path: str = DB_PATH) -> list[dict[str, Any]]:
     turnos: list[dict[str, Any]] = []
     async with AsyncSqliteSaver.from_conn_string(db_path) as saver:
+        # La demo arranca siempre de cero: borra sus threads de corridas anteriores
+        # (incluida alguna que haya fallado a mitad de camino).
+        for thread_id in {t for t, _ in DEMO}:
+            await saver.adelete_thread(thread_id)
         graph = build_graph(saver, llm)
         for thread_id, pregunta in DEMO:
             turnos.append(await ejecutar_turno(graph, thread_id, pregunta))
@@ -122,30 +128,49 @@ async def chat(thread_id: str) -> None:
                 await ejecutar_turno(graph, thread_id, pregunta)
 
 
-def _configurar_logs(archivo: Path | None) -> None:
-    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
-    if archivo:
-        handlers.append(logging.FileHandler(archivo, mode="w", encoding="utf-8"))
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", handlers=handlers)
-    for ruidoso in ("httpx", "anthropic", "openai"):
+def _configurar_logs() -> None:
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(message)s", handlers=[logging.StreamHandler(sys.stdout)]
+    )
+    for ruidoso in ("httpx", "httpx2", "anthropic", "openai"):
         logging.getLogger(ruidoso).setLevel(logging.WARNING)
+
+
+def _quitar_handler(handler: logging.Handler) -> None:
+    logging.getLogger().removeHandler(handler)
+    handler.close()  # libera el archivo (en Windows no se puede mover/borrar si está abierto)
 
 
 async def main() -> None:
     load_dotenv()
+    verificar_configuracion()
     parser = argparse.ArgumentParser(description="Agente ReAct con memoria persistente")
     parser.add_argument("--chat", action="store_true", help="modo interactivo")
     parser.add_argument("--thread-id", default="sesion-1")
     args = parser.parse_args()
 
     if args.chat:
-        _configurar_logs(None)
+        _configurar_logs()
         await chat(args.thread_id)
         return
 
+    # El log se escribe en un .tmp y solo reemplaza la traza anterior si la demo termina bien:
+    # una corrida fallida (API key inválida, sin red, etc.) no pisa la traza buena.
     TRACES_DIR.mkdir(exist_ok=True)
-    _configurar_logs(TRACES_DIR / "traza_ejecucion.log")
-    turnos = await demo()
+    _configurar_logs()
+    log_final = TRACES_DIR / "traza_ejecucion.log"
+    log_tmp = TRACES_DIR / "traza_ejecucion.log.tmp"
+    archivo = logging.FileHandler(log_tmp, mode="w", encoding="utf-8")
+    archivo.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+    logging.getLogger().addHandler(archivo)
+    try:
+        turnos = await demo()
+    except BaseException:
+        _quitar_handler(archivo)
+        log_tmp.unlink(missing_ok=True)
+        raise
+    _quitar_handler(archivo)
+    log_tmp.replace(log_final)
     salida = {
         "generado": datetime.now().isoformat(timespec="seconds"),
         "recursion_limit": RECURSION_LIMIT,
@@ -158,7 +183,17 @@ async def main() -> None:
 
 
 def run() -> None:
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (anthropic.APIError, openai.APIError) as e:
+        # Errores del proveedor (API key inválida, sin crédito, sin red...): mensaje corto, sin traceback.
+        detalle = getattr(e, "message", str(e))
+        sys.exit(
+            f"✖ Error del proveedor de LLM ({proveedor_llm()}): {detalle}\n"
+            "  Revisá la API key en el .env o cambiá de proveedor con LLM_PROVIDER (ver README)."
+        )
+    except KeyboardInterrupt:
+        sys.exit("\nInterrumpido.")
 
 
 if __name__ == "__main__":

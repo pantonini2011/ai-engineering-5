@@ -42,9 +42,26 @@ class AgentState(MessagesState):
     pero además deduplica por id)."""
 
 
+CLAVES_POR_PROVEEDOR = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}
+
+
+def proveedor_llm() -> str:
+    return os.getenv("LLM_PROVIDER", "anthropic").strip().lower()
+
+
+def verificar_configuracion() -> None:
+    """Falla rápido, con un mensaje claro, si el proveedor o su API key no están configurados."""
+    provider = proveedor_llm()
+    if provider not in CLAVES_POR_PROVEEDOR:
+        raise SystemExit(f"✖ LLM_PROVIDER={provider!r} no es válido: usá 'anthropic' u 'openai'.")
+    clave = CLAVES_POR_PROVEEDOR[provider]
+    if not os.getenv(clave):
+        raise SystemExit(f"✖ Falta {clave} (LLM_PROVIDER={provider}). Completala en el .env.")
+
+
 def build_llm() -> BaseChatModel:
     """Crea el LLM según la variable de entorno LLM_PROVIDER (anthropic | openai)."""
-    provider = os.getenv("LLM_PROVIDER", "anthropic").lower()
+    provider = proveedor_llm()
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 
