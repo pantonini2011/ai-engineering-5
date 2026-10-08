@@ -165,6 +165,19 @@ pytest
 mypy src tests
 ```
 
+En el chat, cada turno muestra los pasos del ciclo ReAct (qué tool decide usar el agente y qué
+devuelve) y después la respuesta:
+
+```
+Vos: ¿cuántos pedidos tiene Juan Pérez?
+  → El agente decide usar: buscar_cliente({'nombre': 'Juan Pérez'})
+  → buscar_cliente devuelve: {'resultados': [{'cliente_id': 101, 'nombre': 'Juan Pérez', 'ciudad': 'Rosario'}]}
+  → El agente decide usar: buscar_pedidos({'cliente_id': 101})
+  → buscar_pedidos devuelve: {'cliente_id': 101, 'pedidos': 1, 'total': 3200.0, ...}
+
+Agente: Juan Pérez, de Rosario, tiene 1 pedido. Es el n.º 5001 del 02/08/2026, por $3.200, y figura como entregado.
+```
+
 ## Tests
 
 Los tests usan un LLM falso con respuestas guionadas, así que no gastan API. El grafo, las tools
