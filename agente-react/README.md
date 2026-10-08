@@ -11,7 +11,7 @@ gracias a un checkpointer **SQLite** (`AsyncSqliteSaver`). Todo el código es as
 
 ```
           ┌──────────────────────────────┐
-START ──▶ │ agent (LLM + bind_tools)     │ ──(tools_condition: sin tool_calls)──▶ END
+START ──▶│ agent (LLM + bind_tools)     │ ──(tools_condition: sin tool_calls)──▶ END
           └──────────────────────────────┘
                  ▲                  │ (tools_condition: hay tool_calls)
                  │                  ▼
