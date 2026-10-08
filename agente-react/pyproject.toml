@@ -30,6 +30,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+addopts = "-v"
 
 [tool.mypy]
 python_version = "3.12"

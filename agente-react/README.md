@@ -26,7 +26,7 @@ indexado por `thread_id`. La estructura del diagrama es la que devuelve
 | `src/agente/tools.py` | 3 herramientas `@tool` (con `args_schema` Pydantic y timeout) sobre una base de clientes/pedidos simulada |
 | `src/agente/graph.py` | `AgentState(MessagesState)`, nodos, arista condicional, recorte de contexto, cierre de turnos cortados |
 | `src/agente/main.py` | Demo que genera la traza, chat interactivo, `recursion_limit` |
-| `tests/test_grafo.py` | Tests offline con un LLM falso (no consumen API) |
+| `tests/test_grafo.py` | Tests offline con un LLM falso (no consumen API), agrupados por criterio |
 | `traces/` | Traza ReAct de ejemplo (`.json` y `.log`) |
 
 ### Herramientas
@@ -138,8 +138,37 @@ python -m agente.main --chat --thread-id mi-sesion
 
 # Tests offline (no usan API key)
 pytest
-mypy src
+mypy src tests
 ```
+
+## Tests
+
+Los tests usan un LLM falso con respuestas guionadas, así que no gastan API. El grafo, las tools
+y el checkpointer SQLite son los reales. Están agrupados por criterio de aceptación,
+y `pytest` muestra cada uno por nombre:
+
+| Criterio | Tests (`tests/test_grafo.py`) |
+|---|---|
+| Autonomía y multi-paso | `TestAutonomiaYMultipaso`: encadena `buscar_cliente` → `buscar_pedidos`; termina solo cuando el LLM no pide tools |
+| Ciclo de retorno | `TestCicloDeRetorno`: el error de una tool vuelve al agente; argumentos inválidos (Pydantic) no ejecutan la tool; timeout de la base vuelve como error |
+| Resiliencia de estado | `TestResilienciaDeEstado`: recuerda el thread al reabrir la base; threads distintos no comparten memoria |
+| Límite de recursión | `TestLimiteDeRecursion`: `recursion_limit` corta bucles; el turno cortado deja el thread consistente (límite par e impar) |
+
+```
+tests/test_grafo.py::TestAutonomiaYMultipaso::test_encadena_dos_tools_para_responder PASSED
+tests/test_grafo.py::TestAutonomiaYMultipaso::test_termina_cuando_el_llm_no_pide_tools PASSED
+tests/test_grafo.py::TestCicloDeRetorno::test_error_de_tool_vuelve_al_agente PASSED
+tests/test_grafo.py::TestCicloDeRetorno::test_argumentos_invalidos_no_ejecutan_la_tool PASSED
+tests/test_grafo.py::TestCicloDeRetorno::test_timeout_de_la_base_vuelve_como_error PASSED
+tests/test_grafo.py::TestResilienciaDeEstado::test_recuerda_el_thread_al_reabrir_la_base PASSED
+tests/test_grafo.py::TestResilienciaDeEstado::test_threads_distintos_no_comparten_memoria PASSED
+tests/test_grafo.py::TestLimiteDeRecursion::test_recursion_limit_corta_bucles PASSED
+tests/test_grafo.py::TestLimiteDeRecursion::test_turno_cortado_deja_el_thread_consistente[limite_par] PASSED
+tests/test_grafo.py::TestLimiteDeRecursion::test_turno_cortado_deja_el_thread_consistente[limite_impar] PASSED
+========================= 10 passed =========================
+```
+
+Para correr un solo grupo: `pytest -k TestCicloDeRetorno`.
 
 La demo ejecuta estos turnos:
 
