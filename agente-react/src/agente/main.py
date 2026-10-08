@@ -25,7 +25,13 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.errors import GraphRecursionError
 
-from agente.graph import build_graph, cerrar_turno_cortado, proveedor_llm, verificar_configuracion
+from agente.graph import (
+    build_graph,
+    cerrar_turno_cortado,
+    modelo_llm,
+    proveedor_llm,
+    verificar_configuracion,
+)
 
 RECURSION_LIMIT = 10  # techo de pasos por invocación (evita bucles y costos)
 DB_PATH = "checkpoints.db"
@@ -91,8 +97,8 @@ DEMO: list[tuple[str, str]] = [
     ("sesion-ana", "¿Cuántos pedidos tuvo Ana Gómez y cuál fue el total?"),
     # 2) Memoria: "el último" se resuelve con el contexto del thread
     ("sesion-ana", "¿Y el último? ¿Qué productos tenía?"),
-    # 3) Ciclo de retorno: id inexistente → error → reintento o pedido de aclaración
-    ("sesion-errores", "Pasame el total de pedidos del cliente 999."),
+    # 3) Ciclo de retorno: id equivocado → error → reintenta con el nombre → buscar_pedidos
+    ("sesion-errores", "Pasame el total de pedidos del cliente 999, es Juan Pérez."),
     # 4) Ambigüedad: dos clientes "Ana" → el agente debería pedir aclaración
     ("sesion-errores", "¿Y cuántos pedidos tiene Ana?"),
 ]
@@ -163,6 +169,7 @@ async def main() -> None:
     archivo = logging.FileHandler(log_tmp, mode="w", encoding="utf-8")
     archivo.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
     logging.getLogger().addHandler(archivo)
+    log.info("Proveedor: %s · modelo: %s · recursion_limit=%d", proveedor_llm(), modelo_llm(), RECURSION_LIMIT)
     try:
         turnos = await demo()
     except BaseException:
@@ -173,6 +180,8 @@ async def main() -> None:
     log_tmp.replace(log_final)
     salida = {
         "generado": datetime.now().isoformat(timespec="seconds"),
+        "proveedor": proveedor_llm(),
+        "modelo": modelo_llm(),
         "recursion_limit": RECURSION_LIMIT,
         "turnos": turnos,
     }

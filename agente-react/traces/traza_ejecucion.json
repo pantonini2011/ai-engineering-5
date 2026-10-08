@@ -1,5 +1,7 @@
 {
-  "generado": "2026-10-07T21:50:09",
+  "generado": "2026-10-07T22:05:34",
+  "proveedor": "anthropic",
+  "modelo": "claude-sonnet-5-5",
   "recursion_limit": 10,
   "turnos": [
     {
@@ -78,7 +80,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Ana Gómez tuvo 3 pedidos y el total gastado es de $14.500."
+          "texto": "Ana Gómez (cliente 102, Buenos Aires) tuvo **3 pedidos**, por un total de **$14.500**.\n\n- Pedido 5010 (15/07/2026): $4.000, entregado.\n- Pedido 5023 (20/08/2026): $6.300, entregado.\n- Pedido 5047 (30/09/2026): $4.200, en camino."
         }
       ]
     },
@@ -122,14 +124,14 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "El último pedido de Ana Gómez incluye:\n\n- 1 Auricular a $3.000\n- 2 Cables HDMI a $600 cada uno\n\nSi necesitas más información, no dudes en preguntar."
+          "texto": "El último pedido de Ana Gómez es el 5047, que está en camino. Tenía estos productos:\n\n- Auriculares: 1 × $3.000 = $3.000\n- Cable HDMI: 2 × $600 = $1.200\n\nEl total es **$4.200**."
         }
       ]
     },
     {
       "thread_id": "sesion-errores",
-      "usuario": "Pasame el total de pedidos del cliente 999.",
-      "llamadas_a_tools": 2,
+      "usuario": "Pasame el total de pedidos del cliente 999, es Juan Pérez.",
+      "llamadas_a_tools": 3,
       "pasos": [
         {
           "nodo": "agent",
@@ -139,6 +141,12 @@
               "tool": "buscar_pedidos",
               "args": {
                 "cliente_id": 999
+              }
+            },
+            {
+              "tool": "buscar_cliente",
+              "args": {
+                "nombre": "Juan Pérez"
               }
             }
           ]
@@ -152,13 +160,27 @@
           }
         },
         {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_cliente",
+          "resultado": {
+            "resultados": [
+              {
+                "cliente_id": 101,
+                "nombre": "Juan Pérez",
+                "ciudad": "Rosario"
+              }
+            ]
+          }
+        },
+        {
           "nodo": "agent",
           "tipo": "accion",
           "tool_calls": [
             {
-              "tool": "buscar_cliente",
+              "tool": "buscar_pedidos",
               "args": {
-                "nombre": "999"
+                "cliente_id": 101
               }
             }
           ]
@@ -166,15 +188,25 @@
         {
           "nodo": "tools",
           "tipo": "observacion",
-          "tool": "buscar_cliente",
+          "tool": "buscar_pedidos",
           "resultado": {
-            "resultados": []
+            "cliente_id": 101,
+            "pedidos": 1,
+            "total": 3200.0,
+            "detalle": [
+              {
+                "pedido_id": 5001,
+                "fecha": "2026-08-02",
+                "total": 3200.0,
+                "estado": "entregado"
+              }
+            ]
           }
         },
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "No encontré ningún cliente con el ID 999. ¿Podés verificar el número o darme el nombre del cliente?"
+          "texto": "El cliente 999 no existe. Encontré un único Juan Pérez, que es el cliente 101 de Rosario, y usé ese número.\n\nTiene **1 pedido** por un total de **$3.200**. Es el pedido 5001, del 02/08/2026, y figura como entregado.\n\nConfirmame que ese es el Juan Pérez que buscabas. Si no, pasame el número de cliente correcto."
         }
       ]
     },
@@ -217,7 +249,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Hay dos clientes llamados Ana. ¿Te referís a Ana Gómez de Buenos Aires o a Ana Martínez de Mendoza?"
+          "texto": "Hay dos clientas que se llaman Ana. ¿Cuál es la que buscás?\n\n- **Ana Gómez**, de Buenos Aires (cliente 102)\n- **Ana Martínez**, de Mendoza (cliente 104)"
         }
       ]
     },
@@ -229,7 +261,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Estábamos hablando de Ana Gómez."
+          "texto": "Veníamos hablando de **Ana Gómez**, cliente n.º 102 de Buenos Aires."
         }
       ]
     }

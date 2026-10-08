@@ -59,17 +59,23 @@ def verificar_configuracion() -> None:
         raise SystemExit(f"✖ Falta {clave} (LLM_PROVIDER={provider}). Completala en el .env.")
 
 
+MODELOS_POR_DEFECTO = {"anthropic": "claude-sonnet-5-5", "openai": "gpt-4o-mini"}
+
+
+def modelo_llm() -> str:
+    return os.getenv("LLM_MODEL") or MODELOS_POR_DEFECTO.get(proveedor_llm(), "")
+
+
 def build_llm() -> BaseChatModel:
-    """Crea el LLM según la variable de entorno LLM_PROVIDER (anthropic | openai)."""
-    provider = proveedor_llm()
-    if provider == "openai":
+    """Crea el LLM según las variables de entorno LLM_PROVIDER (anthropic | openai) y LLM_MODEL."""
+    if proveedor_llm() == "openai":
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(model=os.getenv("LLM_MODEL", "gpt-4o-mini"), temperature=0)
+        return ChatOpenAI(model=modelo_llm(), temperature=0)
     from langchain_anthropic import ChatAnthropic
 
     # Los modelos Claude actuales no aceptan `temperature` distinta del default.
-    return ChatAnthropic(model_name=os.getenv("LLM_MODEL", "claude-sonnet-5-5"))  # type: ignore[call-arg]
+    return ChatAnthropic(model_name=modelo_llm())  # type: ignore[call-arg]
 
 
 def _recortar(messages: list[AnyMessage]) -> list[BaseMessage]:

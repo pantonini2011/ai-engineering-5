@@ -145,20 +145,33 @@ La demo ejecuta estos turnos:
 
 1. `sesion-ana`: "¿Cuántos pedidos tuvo Ana Gómez y cuál fue el total?" → `buscar_cliente` + `buscar_pedidos` (multi-paso).
 2. `sesion-ana`: "¿Y el último? ¿Qué productos tenía?" → usa la memoria para saber que el último es el 5047 y llama a `detalle_pedido`.
-3. `sesion-errores`: "Pasame el total de pedidos del cliente 999." → la tool devuelve error; el agente reintenta o pide aclaración.
-4. `sesion-errores`: "¿Y cuántos pedidos tiene Ana?" → hay dos "Ana"; el agente debe preguntar a cuál se refiere.
-5. `sesion-ana`, **con una conexión nueva al `.db`**: "¿De qué cliente veníamos hablando?" → responde desde el checkpoint, sin tools.
+3. `sesion-errores`: "Pasame el total de pedidos del cliente 999, es Juan Pérez." → `buscar_pedidos(999)` devuelve error;
+   el agente busca por nombre, encuentra el id 101 y reintenta (ciclo de retorno).
+4. `sesion-errores`: "¿Y cuántos pedidos tiene Ana?" → hay dos "Ana"; el agente pregunta a cuál se refiere.
+5. `sesion-ana`, **con una conexión nueva al `.db`**: "Recordame: ¿de qué cliente veníamos hablando?" → responde desde el checkpoint, sin tools.
 
-## Ejemplo de traza (formato)
+Cada corrida de la demo borra antes sus propios threads, así que siempre arranca de cero. Si la corrida
+falla (API key inválida, sin red, etc.), muestra un mensaje corto y **no pisa la traza anterior**.
+
+## Traza de ejemplo
+
+La traza incluida en el repo se generó con la configuración por defecto (`LLM_PROVIDER=anthropic`,
+modelo `claude-sonnet-5-5`, `recursion_limit=10`); el proveedor y el modelo quedan registrados al
+principio del `.log` y en el `.json`. Fragmento del turno 3, el ciclo de retorno:
 
 ```
-[sesion-ana] Usuario: ¿Cuántos pedidos tuvo Ana Gómez y cuál fue el total?
-  → El agente decide usar: buscar_cliente({'nombre': 'Ana Gómez'})
-  → buscar_cliente devuelve: {'resultados': [{'cliente_id': 102, 'nombre': 'Ana Gómez', ...}]}
-  → El agente decide usar: buscar_pedidos({'cliente_id': 102})
-  → buscar_pedidos devuelve: {'cliente_id': 102, 'pedidos': 3, 'total': 14500.0, ...}
-  → Respuesta: Ana Gómez tuvo 3 pedidos por un total de $14.500.
+[sesion-errores] Usuario: Pasame el total de pedidos del cliente 999, es Juan Pérez.
+  → El agente decide usar: buscar_pedidos({'cliente_id': 999})
+  → El agente decide usar: buscar_cliente({'nombre': 'Juan Pérez'})
+  → buscar_pedidos devuelve: {'error': 'No existe el cliente 999. Verificá el id con buscar_cliente.'}
+  → buscar_cliente devuelve: {'resultados': [{'cliente_id': 101, 'nombre': 'Juan Pérez', 'ciudad': 'Rosario'}]}
+  → El agente decide usar: buscar_pedidos({'cliente_id': 101})
+  → buscar_pedidos devuelve: {'cliente_id': 101, 'pedidos': 1, 'total': 3200.0, ...}
+  → Respuesta: El cliente 999 no existe. Encontré un único Juan Pérez, que es el cliente 101 de Rosario, ...
 ```
 
-La traza completa con el LLM real (generada con OpenAI `gpt-4o-mini`, `LLM_PROVIDER=openai`) está en [`traces/traza_ejecucion.json`](traces/traza_ejecucion.json)
-y [`traces/traza_ejecucion.log`](traces/traza_ejecucion.log).
+En el primer paso el modelo pidió las dos tools en paralelo (una sola respuesta con dos `tool_calls`);
+con el error de la primera, reintentó `buscar_pedidos` con el id correcto.
+
+Traza completa: [`traces/traza_ejecucion.log`](traces/traza_ejecucion.log) (legible) y
+[`traces/traza_ejecucion.json`](traces/traza_ejecucion.json) (estructurada, paso a paso).
