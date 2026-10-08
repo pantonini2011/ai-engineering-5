@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-07T21:46:00",
+  "generado": "2026-10-07T21:50:09",
   "recursion_limit": 10,
   "turnos": [
     {
@@ -129,7 +129,7 @@
     {
       "thread_id": "sesion-errores",
       "usuario": "Pasame el total de pedidos del cliente 999.",
-      "llamadas_a_tools": 1,
+      "llamadas_a_tools": 2,
       "pasos": [
         {
           "nodo": "agent",
@@ -153,8 +153,28 @@
         },
         {
           "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "buscar_cliente",
+              "args": {
+                "nombre": "999"
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_cliente",
+          "resultado": {
+            "resultados": []
+          }
+        },
+        {
+          "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Parece que el cliente con ID 999 no existe. ¿Podés darme el nombre del cliente para buscarlo?"
+          "texto": "No encontré ningún cliente con el ID 999. ¿Podés verificar el número o darme el nombre del cliente?"
         }
       ]
     },
@@ -197,7 +217,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Hay dos clientes con el nombre \"Ana\": \n\n1. Ana Gómez de Buenos Aires (ID 102)\n2. Ana Martínez de Mendoza (ID 104)\n\n¿A cuál te referís?"
+          "texto": "Hay dos clientes llamados Ana. ¿Te referís a Ana Gómez de Buenos Aires o a Ana Martínez de Mendoza?"
         }
       ]
     },
