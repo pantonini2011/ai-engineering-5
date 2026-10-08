@@ -9,22 +9,22 @@ gracias a un checkpointer **SQLite** (`AsyncSqliteSaver`). Todo el código es as
 
 ## Arquitectura
 
+```mermaid
+flowchart TD
+    START([START]) --> agent["agent<br/>LLM + bind_tools"]
+    agent -. "tools_condition:<br/>hay tool_calls" .-> tools["tools<br/>ToolNode"]
+    tools -- "observación" --> agent
+    agent -. "tools_condition:<br/>sin tool_calls" .-> END([END])
 ```
-          ┌──────────────────────────────┐
-START ──▶│ agent (LLM + bind_tools)     │ ──(tools_condition: sin tool_calls)──▶ END
-          └──────────────────────────────┘
-                 ▲                  │ (tools_condition: hay tool_calls)
-                 │                  ▼
-          ┌──────────────────────────────┐
-          │ tools (ToolNode)             │
-          └──────────────────────────────┘
-                 checkpointer: AsyncSqliteSaver → checkpoints.db
-```
+
+El estado de cada paso se guarda con el checkpointer `AsyncSqliteSaver` en `checkpoints.db`,
+indexado por `thread_id`. La estructura del diagrama es la que devuelve
+`build_graph(...).get_graph().draw_mermaid()`: las flechas punteadas son la arista condicional.
 
 | Archivo | Contenido |
 |---|---|
-| `src/agente/tools.py` | 3 herramientas `@tool` (con `args_schema` Pydantic) sobre una base de clientes/pedidos simulada |
-| `src/agente/graph.py` | `AgentState(MessagesState)`, nodos, arista condicional, recorte de contexto |
+| `src/agente/tools.py` | 3 herramientas `@tool` (con `args_schema` Pydantic y timeout) sobre una base de clientes/pedidos simulada |
+| `src/agente/graph.py` | `AgentState(MessagesState)`, nodos, arista condicional, recorte de contexto, cierre de turnos cortados |
 | `src/agente/main.py` | Demo que genera la traza, chat interactivo, `recursion_limit` |
 | `tests/test_grafo.py` | Tests offline con un LLM falso (no consumen API) |
 | `traces/` | Traza ReAct de ejemplo (`.json` y `.log`) |
@@ -41,6 +41,12 @@ Cada tool declara un `args_schema` de **Pydantic** (`extra="forbid"`, límites c
 Si el LLM manda argumentos inválidos (por ejemplo `cliente_id=-5`), la tool **no se ejecuta**:
 `handle_validation_error` devuelve `{"error": "Argumentos inválidos (...)"}` como observación y el agente corrige y reintenta.
 
+Cada consulta a la "base" corre dentro de `asyncio.wait_for` con un **timeout** (`TIMEOUT_DB_S = 2.0`):
+si no responde a tiempo, la tool devuelve `{"error": "... no respondió ..."}` en vez de colgar el grafo.
+
+Los docstrings dicen cuándo usar cada tool y también **cuándo NO usarla** (por ejemplo, no llamar a
+`buscar_cliente` si el `cliente_id` ya está en la conversación), para que el LLM elija mejor.
+
 Como el usuario suele nombrar al cliente y no su id, responder "¿cuántos pedidos tuvo Ana Gómez?"
 exige **dos llamadas encadenadas**: `buscar_cliente` → `buscar_pedidos`.
 
@@ -49,11 +55,20 @@ exige **dos llamadas encadenadas**: `buscar_cliente` → `buscar_pedidos`.
 | Criterio | Implementación |
 |---|---|
 | Autonomía | El LLM elige la tool vía `bind_tools()`; el ruteo lo hace `tools_condition`, sin if/else manuales |
-| Ciclo de retorno | Las tools devuelven `{"error": ...}` con una pista; los argumentos se validan con Pydantic y los inválidos vuelven como error; `ToolNode(handle_tool_errors=True)` convierte excepciones en mensajes; el system prompt indica reintentar o pedir aclaración |
+| Ciclo de retorno | Las tools devuelven `{"error": ...}` con una pista; los argumentos se validan con Pydantic y los inválidos vuelven como error; los timeouts también vuelven como error; `ToolNode(handle_tool_errors=True)` convierte excepciones en mensajes; el system prompt indica reintentar o pedir aclaración |
 | Resiliencia de estado | `AsyncSqliteSaver` + `thread_id`. La demo reabre la base en una conexión nueva y retoma el thread |
-| Límite de recursión | `recursion_limit=10` en cada invocación; `GraphRecursionError` se captura y queda en la traza |
+| Límite de recursión | `recursion_limit=10` en cada invocación; `GraphRecursionError` se captura, queda en la traza y `cerrar_turno_cortado` deja el thread consistente (completa `tool_calls` pendientes y agrega una respuesta final) para que el próximo turno funcione |
 | Estado sucio | `trim_messages` envía al LLM solo los últimos 20 mensajes (el historial completo queda en el checkpoint) |
 | Código limpio | Python 3.12+, type hints, `async`/`await` en tools, nodos, checkpointer y streaming |
+
+## Seguridad: mínimo privilegio
+
+El LLM no ejecuta nada: solo propone `tool_calls`, y el código decide qué se corre.
+
+- Las tools son de **solo lectura**: no hay ninguna que modifique, borre o cree datos.
+- Consultan por **parámetros validados** (ids enteros con rango, nombres con largo acotado);
+  nunca ejecutan SQL, comandos ni código generado por el LLM.
+- Las API keys se leen de variables de entorno y no forman parte del estado ni de las trazas.
 
 ## Cómo levantar el entorno
 

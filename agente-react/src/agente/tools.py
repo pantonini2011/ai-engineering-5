@@ -5,6 +5,11 @@ y el docstring. Por eso los docstrings son largos y explícitos.
 
 Los argumentos se validan con Pydantic antes de tocar la "base": si el LLM manda
 algo inválido, la tool no se ejecuta y el error vuelve al agente para que corrija.
+Cada consulta tiene un timeout: si la "base" no responde a tiempo, la tool devuelve
+un error en vez de colgar el grafo.
+
+Mínimo privilegio: las tools son de solo lectura y consultan por id o nombre con
+parámetros validados; nunca ejecutan SQL ni código generado por el LLM.
 """
 
 from __future__ import annotations
@@ -12,7 +17,8 @@ from __future__ import annotations
 import asyncio
 import json
 import unicodedata
-from typing import Any
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -53,6 +59,31 @@ ITEMS: dict[int, list[dict[str, Any]]] = {
 def _normalizar(texto: str) -> str:
     sin_tildes = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
     return sin_tildes.lower().strip()
+
+
+# --- Acceso a la "base" con latencia simulada y timeout -----------------------
+
+LATENCIA_DB_S = 0.05  # latencia simulada de cada consulta
+TIMEOUT_DB_S = 2.0  # techo por consulta; si se supera, la tool devuelve error
+
+T = TypeVar("T")
+
+
+async def _consultar(consulta: Callable[[], T]) -> T:
+    """Simula una consulta de I/O a la base de datos."""
+    await asyncio.sleep(LATENCIA_DB_S)
+    return consulta()
+
+
+async def _con_timeout(consulta: Callable[[], dict[str, Any]], tool_name: str) -> dict[str, Any]:
+    """Ejecuta la consulta con `asyncio.wait_for`; ante timeout devuelve un error para el LLM."""
+    try:
+        return await asyncio.wait_for(_consultar(consulta), timeout=TIMEOUT_DB_S)
+    except TimeoutError:
+        return {
+            "error": f"{tool_name} no respondió en {TIMEOUT_DB_S}s. Reintentá una vez; "
+            "si vuelve a fallar, avisale al usuario que la base no está disponible."
+        }
 
 
 # --- Contratos de entrada (Pydantic) -----------------------------------------
@@ -97,20 +128,27 @@ async def buscar_cliente(nombre: str) -> dict[str, Any]:
     Usala SIEMPRE que el usuario mencione a un cliente por su nombre y no por su
     número de cliente, porque las demás herramientas necesitan el `cliente_id`.
 
+    NO la uses si ya conocés el `cliente_id` (porque el usuario lo dio o porque
+    aparece en la conversación): pasá directo a `buscar_pedidos`. Tampoco sirve para
+    buscar pedidos ni productos.
+
     Returns:
         {"resultados": [{"cliente_id": int, "nombre": str, "ciudad": str}, ...]}.
         Si hay más de un resultado, el nombre es ambiguo: pedile al usuario que
         aclare (por ejemplo, la ciudad) en lugar de adivinar.
         Si la lista está vacía, no existe ningún cliente con ese nombre.
     """
-    await asyncio.sleep(0.05)  # simula latencia de I/O
     buscado = _normalizar(nombre)
-    resultados = [
-        {"cliente_id": cid, **datos}
-        for cid, datos in CLIENTES.items()
-        if buscado in _normalizar(datos["nombre"])
-    ]
-    return {"resultados": resultados}
+
+    def consulta() -> dict[str, Any]:
+        resultados = [
+            {"cliente_id": cid, **datos}
+            for cid, datos in CLIENTES.items()
+            if buscado in _normalizar(datos["nombre"])
+        ]
+        return {"resultados": resultados}
+
+    return await _con_timeout(consulta, "buscar_cliente")
 
 
 @tool(args_schema=BuscarPedidosInput)
@@ -122,21 +160,27 @@ async def buscar_pedidos(cliente_id: int) -> dict[str, Any]:
     o cuál fue su primer/último pedido. Requiere el `cliente_id` numérico; si solo
     tenés el nombre, llamá antes a `buscar_cliente`.
 
+    NO la uses para ver qué productos tenía un pedido (para eso está `detalle_pedido`),
+    ni la vuelvas a llamar si el resumen de ese cliente ya está en la conversación.
+
     Returns:
         {"cliente_id": int, "pedidos": int, "total": float, "detalle": [...]}
         o {"error": str} si el cliente no existe. Ante un error, revisá el id
         (por ejemplo buscándolo por nombre) y volvé a intentar, o pedí aclaración.
     """
-    await asyncio.sleep(0.05)
-    if cliente_id not in CLIENTES:
-        return {"error": f"No existe el cliente {cliente_id}. Verificá el id con buscar_cliente."}
-    pedidos = sorted(PEDIDOS.get(cliente_id, []), key=lambda p: p["fecha"])
-    return {
-        "cliente_id": cliente_id,
-        "pedidos": len(pedidos),
-        "total": sum(p["total"] for p in pedidos),
-        "detalle": pedidos,
-    }
+
+    def consulta() -> dict[str, Any]:
+        if cliente_id not in CLIENTES:
+            return {"error": f"No existe el cliente {cliente_id}. Verificá el id con buscar_cliente."}
+        pedidos = sorted(PEDIDOS.get(cliente_id, []), key=lambda p: p["fecha"])
+        return {
+            "cliente_id": cliente_id,
+            "pedidos": len(pedidos),
+            "total": sum(p["total"] for p in pedidos),
+            "detalle": pedidos,
+        }
+
+    return await _con_timeout(consulta, "buscar_pedidos")
 
 
 @tool(args_schema=DetallePedidoInput)
@@ -147,13 +191,19 @@ async def detalle_pedido(pedido_id: int) -> dict[str, Any]:
     (por ejemplo "¿qué tenía el último pedido?"). Requiere el `pedido_id`, que se
     obtiene del campo `detalle` de `buscar_pedidos`.
 
+    NO la uses con un número de cliente (son ids distintos) ni inventes un
+    `pedido_id`: si no lo tenés, obtenelo primero con `buscar_pedidos`.
+
     Returns:
         {"pedido_id": int, "items": [...]} o {"error": str} si el pedido no existe.
     """
-    await asyncio.sleep(0.05)
-    if pedido_id not in ITEMS:
-        return {"error": f"No existe el pedido {pedido_id}. Obtené ids válidos con buscar_pedidos."}
-    return {"pedido_id": pedido_id, "items": ITEMS[pedido_id]}
+
+    def consulta() -> dict[str, Any]:
+        if pedido_id not in ITEMS:
+            return {"error": f"No existe el pedido {pedido_id}. Obtené ids válidos con buscar_pedidos."}
+        return {"pedido_id": pedido_id, "items": ITEMS[pedido_id]}
+
+    return await _con_timeout(consulta, "detalle_pedido")
 
 
 TOOLS = [buscar_cliente, buscar_pedidos, detalle_pedido]

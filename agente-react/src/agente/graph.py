@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AnyMessage, BaseMessage, SystemMessage, trim_messages
+from langchain_core.messages import (
+    AIMessage,
+    AnyMessage,
+    BaseMessage,
+    SystemMessage,
+    ToolMessage,
+    trim_messages,
+)
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -83,3 +92,38 @@ def build_graph(
     builder.add_conditional_edges("agent", tools_condition, {"tools": "tools", END: END})
     builder.add_edge("tools", "agent")
     return builder.compile(checkpointer=checkpointer)
+
+
+async def cerrar_turno_cortado(
+    graph: CompiledStateGraph[Any, Any, Any, Any], config: RunnableConfig, motivo: str
+) -> None:
+    """Deja el thread consistente después de un GraphRecursionError.
+
+    Si el corte quedó después de `agent`, hay tool_calls sin su ToolMessage y el
+    próximo turno fallaría (los proveedores rechazan ese historial). Se completan
+    esas llamadas y se agrega una respuesta final, registrada como salida de `agent`
+    para que `tools_condition` cierre el turno en END.
+    """
+    estado = await graph.aget_state(config)
+    mensajes: list[AnyMessage] = estado.values.get("messages", [])
+    respondidas = {m.tool_call_id for m in mensajes if isinstance(m, ToolMessage)}
+    pendientes = [
+        tc
+        for m in mensajes
+        if isinstance(m, AIMessage)
+        for tc in m.tool_calls
+        if tc["id"] not in respondidas
+    ]
+    cierre: list[BaseMessage] = [
+        ToolMessage(
+            content=json.dumps({"error": f"No se ejecutó: {motivo}."}, ensure_ascii=False),
+            tool_call_id=tc["id"],
+            name=tc["name"],
+            status="error",
+        )
+        for tc in pendientes
+    ]
+    cierre.append(
+        AIMessage(f"No pude completar la consulta: {motivo}. ¿Podés reformularla o hacerla más concreta?")
+    )
+    await graph.aupdate_state(config, {"messages": cierre}, as_node="agent")

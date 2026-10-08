@@ -23,7 +23,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.errors import GraphRecursionError
 
-from agente.graph import build_graph
+from agente.graph import build_graph, cerrar_turno_cortado
 
 RECURSION_LIMIT = 10  # techo de pasos por invocación (evita bucles y costos)
 DB_PATH = "checkpoints.db"
@@ -76,6 +76,9 @@ async def ejecutar_turno(graph: Any, thread_id: str, pregunta: str) -> dict[str,
     except GraphRecursionError:
         log.warning("  ✖ Se alcanzó recursion_limit=%d; se corta el ciclo.", RECURSION_LIMIT)
         pasos.append({"tipo": "corte", "motivo": f"recursion_limit={RECURSION_LIMIT}"})
+        await cerrar_turno_cortado(
+            graph, _config(thread_id), f"se alcanzó el límite de {RECURSION_LIMIT} pasos de razonamiento"
+        )
 
     llamadas = sum(len(p["tool_calls"]) for p in pasos if p["tipo"] == "accion")
     return {"thread_id": thread_id, "usuario": pregunta, "llamadas_a_tools": llamadas, "pasos": pasos}

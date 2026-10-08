@@ -11,10 +11,12 @@ from typing import Any
 import pytest
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.errors import GraphRecursionError
 
-from agente.graph import build_graph
+from agente import tools
+from agente.graph import build_graph, cerrar_turno_cortado
 from agente.main import _config
 
 
@@ -102,6 +104,27 @@ def test_argumentos_invalidos_no_ejecutan_la_tool(tmp_path: Path) -> None:
     asyncio.run(run())
 
 
+def test_timeout_de_la_base_vuelve_como_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tools, "LATENCIA_DB_S", 0.5)
+    monkeypatch.setattr(tools, "TIMEOUT_DB_S", 0.01)
+
+    async def run() -> None:
+        llm = _modelo(
+            [
+                _call("buscar_pedidos", {"cliente_id": 102}, 1),
+                AIMessage("La base no responde, probá en un rato."),
+            ]
+        )
+        async with AsyncSqliteSaver.from_conn_string(str(tmp_path / "cp.db")) as saver:
+            out = await build_graph(saver, llm).ainvoke(
+                {"messages": [HumanMessage("pedidos del 102")]}, _config("t5")
+            )
+        (obs,) = [m for m in out["messages"] if isinstance(m, ToolMessage)]
+        assert "no respondió" in obs.content
+
+    asyncio.run(run())
+
+
 def test_recursion_limit_corta_bucles(tmp_path: Path) -> None:
     async def run() -> None:
         infinito = _modelo([_call("buscar_pedidos", {"cliente_id": 102}, i) for i in range(50)])
@@ -110,5 +133,27 @@ def test_recursion_limit_corta_bucles(tmp_path: Path) -> None:
                 await build_graph(saver, infinito).ainvoke(
                     {"messages": [HumanMessage("loop")]}, _config("t3")
                 )
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("limite", [10, 9])  # par: corta tras `tools`; impar: tras `agent`
+def test_turno_cortado_deja_el_thread_consistente(tmp_path: Path, limite: int) -> None:
+    async def run() -> None:
+        config: RunnableConfig = {"configurable": {"thread_id": "t6"}, "recursion_limit": limite}
+        infinito = _modelo([_call("buscar_pedidos", {"cliente_id": 102}, i) for i in range(50)])
+        async with AsyncSqliteSaver.from_conn_string(str(tmp_path / "cp.db")) as saver:
+            graph = build_graph(saver, infinito)
+            with pytest.raises(GraphRecursionError):
+                await graph.ainvoke({"messages": [HumanMessage("loop")]}, config)
+            await cerrar_turno_cortado(graph, config, "límite de pasos")
+            estado = await graph.aget_state(config)
+
+        mensajes = estado.values["messages"]
+        llamadas = {tc["id"] for m in mensajes if isinstance(m, AIMessage) for tc in m.tool_calls}
+        respondidas = {m.tool_call_id for m in mensajes if isinstance(m, ToolMessage)}
+        assert llamadas == respondidas  # ninguna tool_call queda sin su ToolMessage
+        assert "límite de pasos" in mensajes[-1].content
+        assert estado.next == ()  # el turno quedó cerrado
 
     asyncio.run(run())
