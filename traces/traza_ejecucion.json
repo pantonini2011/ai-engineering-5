@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-07T22:05:34",
+  "generado": "2026-10-07T22:14:12",
   "proveedor": "anthropic",
   "modelo": "claude-sonnet-5-5",
   "recursion_limit": 10,
@@ -80,7 +80,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Ana Gómez (cliente 102, Buenos Aires) tuvo **3 pedidos**, por un total de **$14.500**.\n\n- Pedido 5010 (15/07/2026): $4.000, entregado.\n- Pedido 5023 (20/08/2026): $6.300, entregado.\n- Pedido 5047 (30/09/2026): $4.200, en camino."
+          "texto": "Ana Gómez (cliente 102, Buenos Aires) tuvo **3 pedidos**, por un total de **$14.500**.\n\n- Pedido 5010 (15/07/2026): $4.000, entregado\n- Pedido 5023 (20/08/2026): $6.300, entregado\n- Pedido 5047 (30/09/2026): $4.200, en camino"
         }
       ]
     },
@@ -124,7 +124,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "El último pedido de Ana Gómez es el 5047, que está en camino. Tenía estos productos:\n\n- Auriculares: 1 × $3.000 = $3.000\n- Cable HDMI: 2 × $600 = $1.200\n\nEl total es **$4.200**."
+          "texto": "El último pedido de Ana, el 5047, que está en camino, tenía estos productos:\n\n- Auriculares: 1 × $3.000 = $3.000\n- Cable HDMI: 2 × $600 = $1.200\n\nEl total es **$4.200**."
         }
       ]
     },
@@ -206,7 +206,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "El cliente 999 no existe. Encontré un único Juan Pérez, que es el cliente 101 de Rosario, y usé ese número.\n\nTiene **1 pedido** por un total de **$3.200**. Es el pedido 5001, del 02/08/2026, y figura como entregado.\n\nConfirmame que ese es el Juan Pérez que buscabas. Si no, pasame el número de cliente correcto."
+          "texto": "El cliente 999 no existe. Busqué a Juan Pérez por nombre y encontré un único cliente con ese nombre: el **101**, de Rosario.\n\nTiene **1 pedido** por un total de **$3.200**. Es el pedido 5001, del 02/08/2026, y figura como entregado.\n\nConfirmame que el 101 es el Juan Pérez que buscabas, porque el número que me pasaste era otro."
         }
       ]
     },
@@ -261,7 +261,7 @@
         {
           "nodo": "agent",
           "tipo": "respuesta_final",
-          "texto": "Veníamos hablando de **Ana Gómez**, cliente n.º 102 de Buenos Aires."
+          "texto": "Veníamos hablando de **Ana Gómez**, cliente n.º 102, de Buenos Aires."
         }
       ]
     }

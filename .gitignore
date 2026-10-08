@@ -1,10 +1,13 @@
-.venv/
 .env
+.venv/
 __pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
 ~$*
 checkpoints.db*
 
-# Material del curso que no se versiona
+# Material del curso y notas personales que no se versionan
 ejercicios/
-agente-react/preentrega5.md
-agente-react/otrasopciones.md
+preentrega5.md
+otrasopciones.md

@@ -102,7 +102,7 @@ Requiere Python 3.12 o superior.
 
 ```bash
 git clone https://github.com/pantonini2011/ai-engineering-5.git
-cd ai-engineering-5/agente-react
+cd ai-engineering-5
 
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -116,7 +116,7 @@ cp .env.example .env               # y completá ANTHROPIC_API_KEY u OPENAI_API_
 
 ```powershell
 git clone https://github.com/pantonini2011/ai-engineering-5.git
-cd ai-engineering-5\agente-react
+cd ai-engineering-5
 
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -146,8 +146,7 @@ set LLM_PROVIDER=openai             # Windows cmd
 ```
 
 Las claves se leen de variables de entorno (`.env` está en `.gitignore`, nunca se sube).
-Se usa el primer `.env` que se encuentre subiendo desde `src/agente/`, así que el de
-`agente-react/` tiene prioridad sobre uno en una carpeta superior.
+El `.env` va en la raíz del repo, junto a `pyproject.toml`.
 
 ## Cómo ejecutarlo
 
