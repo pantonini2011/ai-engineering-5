@@ -1,0 +1,36 @@
+[project]
+name = "agente-react"
+version = "0.1.0"
+description = "Agente ReAct cíclico con LangGraph y memoria persistente (SqliteSaver)"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-sqlite>=3.1,<4",
+    "langchain-core>=1.6,<2",
+    "langchain-anthropic>=1.7,<2",
+    "langchain-openai>=1.6,<2",
+    "aiosqlite>=0.22",
+    "python-dotenv>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9", "mypy>=1.15"]
+
+[project.scripts]
+agente = "agente.main:run"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true

@@ -1,0 +1,237 @@
+{
+  "generado": "2026-10-07T21:17:09",
+  "recursion_limit": 10,
+  "turnos": [
+    {
+      "thread_id": "sesion-ana",
+      "usuario": "¿Cuántos pedidos tuvo Ana Gómez y cuál fue el total?",
+      "llamadas_a_tools": 2,
+      "pasos": [
+        {
+          "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "buscar_cliente",
+              "args": {
+                "nombre": "Ana Gómez"
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_cliente",
+          "resultado": {
+            "resultados": [
+              {
+                "cliente_id": 102,
+                "nombre": "Ana Gómez",
+                "ciudad": "Buenos Aires"
+              }
+            ]
+          }
+        },
+        {
+          "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "buscar_pedidos",
+              "args": {
+                "cliente_id": 102
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_pedidos",
+          "resultado": {
+            "cliente_id": 102,
+            "pedidos": 3,
+            "total": 14500.0,
+            "detalle": [
+              {
+                "pedido_id": 5010,
+                "fecha": "2026-07-15",
+                "total": 4000.0,
+                "estado": "entregado"
+              },
+              {
+                "pedido_id": 5023,
+                "fecha": "2026-08-20",
+                "total": 6300.0,
+                "estado": "entregado"
+              },
+              {
+                "pedido_id": 5047,
+                "fecha": "2026-09-30",
+                "total": 4200.0,
+                "estado": "en camino"
+              }
+            ]
+          }
+        },
+        {
+          "nodo": "agent",
+          "tipo": "respuesta_final",
+          "texto": "Ana Gómez tuvo 3 pedidos y el total gastado es de $14.500."
+        }
+      ]
+    },
+    {
+      "thread_id": "sesion-ana",
+      "usuario": "¿Y el último? ¿Qué productos tenía?",
+      "llamadas_a_tools": 1,
+      "pasos": [
+        {
+          "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "detalle_pedido",
+              "args": {
+                "pedido_id": 5047
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "detalle_pedido",
+          "resultado": {
+            "pedido_id": 5047,
+            "items": [
+              {
+                "producto": "Auriculares",
+                "cantidad": 1,
+                "precio": 3000.0
+              },
+              {
+                "producto": "Cable HDMI",
+                "cantidad": 2,
+                "precio": 600.0
+              }
+            ]
+          }
+        },
+        {
+          "nodo": "agent",
+          "tipo": "respuesta_final",
+          "texto": "El último pedido de Ana Gómez incluía:\n\n- 1 Auricular a $3.000\n- 2 Cables HDMI a $600 cada uno\n\nSi necesitas más información, ¡decime!"
+        }
+      ]
+    },
+    {
+      "thread_id": "sesion-errores",
+      "usuario": "Pasame el total de pedidos del cliente 999.",
+      "llamadas_a_tools": 2,
+      "pasos": [
+        {
+          "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "buscar_pedidos",
+              "args": {
+                "cliente_id": 999
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_pedidos",
+          "resultado": {
+            "error": "No existe el cliente 999. Verificá el id con buscar_cliente."
+          }
+        },
+        {
+          "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "buscar_cliente",
+              "args": {
+                "nombre": "999"
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_cliente",
+          "resultado": {
+            "resultados": []
+          }
+        },
+        {
+          "nodo": "agent",
+          "tipo": "respuesta_final",
+          "texto": "No encontré ningún cliente con el ID 999. ¿Podés verificar el número o darme el nombre del cliente?"
+        }
+      ]
+    },
+    {
+      "thread_id": "sesion-errores",
+      "usuario": "¿Y cuántos pedidos tiene Ana?",
+      "llamadas_a_tools": 1,
+      "pasos": [
+        {
+          "nodo": "agent",
+          "tipo": "accion",
+          "tool_calls": [
+            {
+              "tool": "buscar_cliente",
+              "args": {
+                "nombre": "Ana"
+              }
+            }
+          ]
+        },
+        {
+          "nodo": "tools",
+          "tipo": "observacion",
+          "tool": "buscar_cliente",
+          "resultado": {
+            "resultados": [
+              {
+                "cliente_id": 102,
+                "nombre": "Ana Gómez",
+                "ciudad": "Buenos Aires"
+              },
+              {
+                "cliente_id": 104,
+                "nombre": "Ana Martínez",
+                "ciudad": "Mendoza"
+              }
+            ]
+          }
+        },
+        {
+          "nodo": "agent",
+          "tipo": "respuesta_final",
+          "texto": "Hay dos clientes llamados Ana: \n\n1. Ana Gómez de Buenos Aires.\n2. Ana Martínez de Mendoza.\n\n¿A cuál te referís?"
+        }
+      ]
+    },
+    {
+      "thread_id": "sesion-ana",
+      "usuario": "Recordame: ¿de qué cliente veníamos hablando?",
+      "llamadas_a_tools": 0,
+      "pasos": [
+        {
+          "nodo": "agent",
+          "tipo": "respuesta_final",
+          "texto": "Estábamos hablando de Ana Gómez."
+        }
+      ]
+    }
+  ]
+}

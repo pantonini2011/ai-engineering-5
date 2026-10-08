@@ -1,0 +1,44 @@
+2026-10-07 21:16:54,974 [sesion-ana] Usuario: ¿Cuántos pedidos tuvo Ana Gómez y cuál fue el total?
+2026-10-07 21:16:57,520 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:16:57,540   → El agente decide usar: buscar_cliente({'nombre': 'Ana Gómez'})
+2026-10-07 21:16:57,582   → buscar_cliente devuelve: {'resultados': [{'cliente_id': 102, 'nombre': 'Ana Gómez', 'ciudad': 'Buenos Aires'}]}
+2026-10-07 21:16:58,330 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:16:58,340   → El agente decide usar: buscar_pedidos({'cliente_id': 102})
+2026-10-07 21:16:58,408   → buscar_pedidos devuelve: {'cliente_id': 102, 'pedidos': 3, 'total': 14500.0, 'detalle': [{'pedido_id': 5010, 'fecha': '2026-07-15', 'total': 4000.0, 'estado': 'entregado'}, {'pedido_id': 5023, 'fecha': '2026-08-20', 'total': 6300.0, 'estado': 'entregado'}, {'pedido_id': 5047, 'fecha': '2026-09-30', 'total': 4200.0, 'estado': 'en camino'}]}
+2026-10-07 21:16:59,817 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:16:59,831   → Respuesta: Ana Gómez tuvo 3 pedidos y el total gastado es de $14.500.
+2026-10-07 21:16:59,831 [sesion-ana] Usuario: ¿Y el último? ¿Qué productos tenía?
+2026-10-07 21:17:01,308 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:01,310   → El agente decide usar: detalle_pedido({'pedido_id': 5047})
+2026-10-07 21:17:01,388   → detalle_pedido devuelve: {'pedido_id': 5047, 'items': [{'producto': 'Auriculares', 'cantidad': 1, 'precio': 3000.0}, {'producto': 'Cable HDMI', 'cantidad': 2, 'precio': 600.0}]}
+2026-10-07 21:17:02,925 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:02,941   → Respuesta: El último pedido de Ana Gómez incluía:
+
+- 1 Auricular a $3.000
+- 2 Cables HDMI a $600 cada uno
+
+Si necesitas más información, ¡decime!
+2026-10-07 21:17:02,942 [sesion-errores] Usuario: Pasame el total de pedidos del cliente 999.
+2026-10-07 21:17:03,800 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:03,810   → El agente decide usar: buscar_pedidos({'cliente_id': 999})
+2026-10-07 21:17:03,879   → buscar_pedidos devuelve: {'error': 'No existe el cliente 999. Verificá el id con buscar_cliente.'}
+2026-10-07 21:17:04,565 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:04,582   → El agente decide usar: buscar_cliente({'nombre': '999'})
+2026-10-07 21:17:04,642   → buscar_cliente devuelve: {'resultados': []}
+2026-10-07 21:17:05,511 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:05,532   → Respuesta: No encontré ningún cliente con el ID 999. ¿Podés verificar el número o darme el nombre del cliente?
+2026-10-07 21:17:05,532 [sesion-errores] Usuario: ¿Y cuántos pedidos tiene Ana?
+2026-10-07 21:17:07,350 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:07,353   → El agente decide usar: buscar_cliente({'nombre': 'Ana'})
+2026-10-07 21:17:07,423   → buscar_cliente devuelve: {'resultados': [{'cliente_id': 102, 'nombre': 'Ana Gómez', 'ciudad': 'Buenos Aires'}, {'cliente_id': 104, 'nombre': 'Ana Martínez', 'ciudad': 'Mendoza'}]}
+2026-10-07 21:17:08,941 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:08,961   → Respuesta: Hay dos clientes llamados Ana: 
+
+1. Ana Gómez de Buenos Aires.
+2. Ana Martínez de Mendoza.
+
+¿A cuál te referís?
+2026-10-07 21:17:08,972 [sesion-ana] Usuario: Recordame: ¿de qué cliente veníamos hablando?
+2026-10-07 21:17:09,594 HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-10-07 21:17:09,644   → Respuesta: Estábamos hablando de Ana Gómez.
+2026-10-07 21:17:09,648 Traza guardada en traces/
