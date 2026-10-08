@@ -70,6 +70,30 @@ El LLM no ejecuta nada: solo propone `tool_calls`, y el código decide qué se c
   nunca ejecutan SQL, comandos ni código generado por el LLM.
 - Las API keys se leen de variables de entorno y no forman parte del estado ni de las trazas.
 
+## Límites del agente
+
+Las tools solo consultan **por cliente** (buscarlo, ver sus pedidos y el detalle de un pedido).
+Ante una pregunta que ninguna tool puede responder, el agente no inventa datos ni fuerza una tool:
+explica qué le falta y ofrece lo que sí puede hacer. Ejemplo real del chat:
+
+```
+Vos: cual es el producto más vendido?
+
+Agente: No puedo responderte eso con las herramientas que tengo. Solo me dejan consultar por
+cliente (sus pedidos y el detalle de cada pedido). No tengo un ranking general de ventas por
+producto ni una forma de listar todos los pedidos.
+
+Lo que sí puedo hacer:
+- Ver qué productos compró un cliente puntual. Para eso necesito su nombre o número de cliente.
+- Armar el ranking de productos de uno o varios clientes que me indiques. Reviso sus pedidos y
+  sumo las cantidades.
+
+¿Querés que lo haga con algún cliente en particular? ...
+```
+
+No llamó a ninguna tool: las docstrings (incluido el "cuándo NO usarla") le alcanzaron para darse
+cuenta de que ninguna servía. Para soportar esa pregunta habría que agregar una tool de ranking.
+
 ## Cómo levantar el entorno
 
 Requiere Python 3.12 o superior.

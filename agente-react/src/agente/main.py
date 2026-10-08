@@ -62,9 +62,14 @@ def _describir(msg: BaseMessage) -> dict[str, Any]:
     return {"tipo": msg.type, "texto": str(msg.content)}
 
 
-async def ejecutar_turno(graph: Any, thread_id: str, pregunta: str) -> dict[str, Any]:
-    """Corre un turno del usuario y devuelve su traza paso a paso."""
-    log.info("[%s] Usuario: %s", thread_id, pregunta)
+async def ejecutar_turno(graph: Any, thread_id: str, pregunta: str, chat: bool = False) -> dict[str, Any]:
+    """Corre un turno del usuario y devuelve su traza paso a paso.
+
+    En modo chat la pregunta ya se ve en pantalla (después de "Vos:"), así que no se repite,
+    y la respuesta final se muestra como "Agente: ...".
+    """
+    if not chat:
+        log.info("[%s] Usuario: %s", thread_id, pregunta)
     pasos: list[dict[str, Any]] = []
     try:
         async for update in graph.astream(
@@ -79,6 +84,8 @@ async def ejecutar_turno(graph: Any, thread_id: str, pregunta: str) -> dict[str,
                             log.info("  → El agente decide usar: %s(%s)", tc["tool"], tc["args"])
                     elif evento["tipo"] == "observacion":
                         log.info("  → %s devuelve: %s", evento["tool"], evento["resultado"])
+                    elif chat:
+                        log.info("\nAgente: %s", evento.get("texto"))
                     else:
                         log.info("  → Respuesta: %s", evento.get("texto"))
     except GraphRecursionError:
@@ -131,13 +138,12 @@ async def chat(thread_id: str) -> None:
         print(f"Chat con memoria (thread_id={thread_id}). Ctrl+C o 'salir' para terminar.")
         while (pregunta := input("\nVos: ").strip()).lower() not in {"salir", "exit"}:
             if pregunta:
-                await ejecutar_turno(graph, thread_id, pregunta)
+                await ejecutar_turno(graph, thread_id, pregunta, chat=True)
 
 
-def _configurar_logs() -> None:
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s %(message)s", handlers=[logging.StreamHandler(sys.stdout)]
-    )
+def _configurar_logs(con_hora: bool = True) -> None:
+    formato = "%(asctime)s %(message)s" if con_hora else "%(message)s"
+    logging.basicConfig(level=logging.INFO, format=formato, handlers=[logging.StreamHandler(sys.stdout)])
     for ruidoso in ("httpx", "httpx2", "anthropic", "openai"):
         logging.getLogger(ruidoso).setLevel(logging.WARNING)
 
@@ -156,7 +162,7 @@ async def main() -> None:
     args = parser.parse_args()
 
     if args.chat:
-        _configurar_logs()
+        _configurar_logs(con_hora=False)
         await chat(args.thread_id)
         return
 
