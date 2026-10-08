@@ -59,21 +59,60 @@ exige **dos llamadas encadenadas**: `buscar_cliente` → `buscar_pedidos`.
 
 Requiere Python 3.12 o superior.
 
+### Linux / macOS
+
 ```bash
 git clone https://github.com/pantonini2011/ai-engineering-5.git
 cd ai-engineering-5/agente-react
 
 python3.12 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt    # versiones exactas probadas
 # alternativa con rangos de versión: pip install -e ".[dev]"
 
 cp .env.example .env               # y completá ANTHROPIC_API_KEY u OPENAI_API_KEY
 ```
 
+### Windows (PowerShell)
+
+```powershell
+git clone https://github.com/pantonini2011/ai-engineering-5.git
+cd ai-engineering-5\agente-react
+
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+copy .env.example .env             # y completá ANTHROPIC_API_KEY u OPENAI_API_KEY
+```
+
+Si `Activate.ps1` falla con *"la ejecución de scripts está deshabilitada en este sistema"*,
+habilitá los scripts para tu usuario (una sola vez) y volvé a activar:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+En `cmd` se activa con `.venv\Scripts\activate.bat`, sin cambiar nada.
+
+### Elegir el proveedor de LLM
+
+En el `.env`, `LLM_PROVIDER=anthropic` u `LLM_PROVIDER=openai` (y opcionalmente `LLM_MODEL`).
+Para cambiarlo solo en la terminal actual, sin tocar el `.env`:
+
+```bash
+export LLM_PROVIDER=openai          # Linux / macOS
+$env:LLM_PROVIDER = "openai"        # Windows PowerShell
+set LLM_PROVIDER=openai             # Windows cmd
+```
+
 Las claves se leen de variables de entorno (`.env` está en `.gitignore`, nunca se sube).
+Se usa el primer `.env` que se encuentre subiendo desde `src/agente/`, así que el de
+`agente-react/` tiene prioridad sobre uno en una carpeta superior.
 
 ## Cómo ejecutarlo
+
+Con el venv activado (los comandos son iguales en Linux, macOS y Windows):
 
 ```bash
 # Demo guionada: genera traces/traza_ejecucion.json y traces/traza_ejecucion.log
